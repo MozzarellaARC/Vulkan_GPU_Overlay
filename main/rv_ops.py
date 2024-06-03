@@ -155,7 +155,7 @@ class RETOPOVIEW_OT_overlay(Operator):
         if obj.rv_show_wire:
             wireframe_batch.draw(shader)
 
-        if obj.rv_show_poles:
+        if obj.rv_show_poles and pole_batch:
             gpu.state.line_width_set(2)
             pole_batch.draw(shader)
 
