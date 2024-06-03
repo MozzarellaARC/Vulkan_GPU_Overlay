@@ -14,15 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-from . rv_ui import *
-from . rv_ops import *
-
-from bpy.types import PropertyGroup
-from bpy.props import IntProperty, BoolProperty, StringProperty, CollectionProperty, FloatVectorProperty, FloatProperty
-import bpy
-
-
 bl_info = {
     "name": "RetopoView",
     "author": "Loki Bear",
@@ -35,10 +26,16 @@ bl_info = {
     "category": "Object"
 }
 
+from .main.rv_ui import *
+from .main.rv_ops import *
+
+from bpy.types import PropertyGroup
+from bpy.props import IntProperty, BoolProperty, StringProperty, CollectionProperty, FloatVectorProperty, FloatProperty
+import bpy
 
 class RETOPOVIEW_group(PropertyGroup):
-    def ensure_unique_name(self, value):
-        obj = bpy.context.active_object
+    def ensure_unique_name(self, context):
+        obj = context.object
         new_name = self.name
         group_names = set()
 
@@ -59,7 +56,7 @@ class RETOPOVIEW_group(PropertyGroup):
             self.name = self.name + "_1"
 
     name: StringProperty(default='Group', update=ensure_unique_name)
-    color: FloatVectorProperty(name="group color", subtype='COLOR', default=[1.0, 1.0, 1.0], min=0.0, max=1.0)
+    color: FloatVectorProperty(name="Group Color", subtype='COLOR', default=[1.0, 1.0, 1.0], min=0.0, max=1.0)
     group_id: IntProperty(default=1)
 
 
@@ -115,15 +112,11 @@ def unregister():
     addon_keymaps.clear()
 
     del bpy.types.Object.rv_poles_color
-
     del bpy.types.Object.rv_poles_size
     del bpy.types.Object.rv_groups_alpha
-
     del bpy.types.Object.rv_groups
-
     del bpy.types.Object.rv_group_idx_counter
     del bpy.types.Object.rv_index
-
     del bpy.types.Object.rv_show_poles
     del bpy.types.Object.rv_show_wire
     del bpy.types.Object.rv_use_x_mirror
@@ -136,3 +129,4 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+

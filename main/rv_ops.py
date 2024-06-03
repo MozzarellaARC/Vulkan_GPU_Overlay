@@ -1,18 +1,15 @@
 import bpy
 import bmesh
 import numpy as np
-import bgl
-import blf
 import gpu
 import random
 import mathutils
-
 from bpy.props import StringProperty, FloatVectorProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 from mathutils import Color
 from gpu_extras.batch import batch_for_shader
 
-from . rv_shaders import vertex_shader, fragment_shader
+from .rv_shaders import vertex_shader, fragment_shader
 
 
 def set_up_marker_data_layer(self, context):
@@ -23,9 +20,9 @@ def set_up_marker_data_layer(self, context):
 
     mesh = obj.data
 
-    retopoViewGroupLayer = mesh.polygon_layers_int.get("RetopoViewGroupLayer")
+    retopoViewGroupLayer = mesh.face_maps.get("RetopoViewGroupLayer")
     if retopoViewGroupLayer is None:
-        retopoViewGroupLayer = mesh.polygon_layers_int.new(name='RetopoViewGroupLayer')
+        retopoViewGroupLayer = mesh.face_maps.new(name='RetopoViewGroupLayer')
 
     bpy.ops.object.mode_set(mode=object_mode)
 
@@ -40,9 +37,7 @@ class RETOPOVIEW_OT_add_group(Operator):
 
     def get_random_color(self):
         color = Color()
-        # set value and saturation to 1 - provides best overlay visibility
         color.hsv = (random.random(), 1, 1)
-
         return color
 
     def execute(self, context):
@@ -88,7 +83,7 @@ class RETOPOVIEW_OT_handle_face_selection(Operator):
 
         mesh = obj.data
         bm = bmesh.from_edit_mesh(mesh)
-        retopoViewGroupLayer = bm.faces.layers.int["RetopoViewGroupLayer"]
+        retopoViewGroupLayer = bm.faces.layers.face_map["RetopoViewGroupLayer"]
 
         for face in bm.faces:
             if face[retopoViewGroupLayer] == group_id:
@@ -113,7 +108,7 @@ class RETOPOVIEW_OT_find_parent_group(Operator):
 
         mesh = obj.data
         bm = bmesh.from_edit_mesh(mesh)
-        retopoViewGroupLayer = bm.faces.layers.int["RetopoViewGroupLayer"]
+        retopoViewGroupLayer = bm.faces.layers.face_map["RetopoViewGroupLayer"]
 
         for face in bm.faces:
             if face.select and face[retopoViewGroupLayer] != 0:
@@ -184,7 +179,7 @@ class RETOPOVIEW_OT_change_selection_group_id(Operator):
 
         mesh = obj.data
         bm = bmesh.from_edit_mesh(mesh)
-        retopoViewGroupLayer = bm.faces.layers.int["RetopoViewGroupLayer"]
+        retopoViewGroupLayer = bm.faces.layers.face_map["RetopoViewGroupLayer"]
 
         if obj.rv_use_x_mirror:
             current_selection = set()
@@ -243,7 +238,7 @@ class RETOPOVIEW_OT_remove_group(Operator):
 
         mesh = obj.data
         bm = bmesh.from_edit_mesh(mesh)
-        retopoViewGroupLayer = bm.faces.layers.int["RetopoViewGroupLayer"]
+        retopoViewGroupLayer = bm.faces.layers.face_map["RetopoViewGroupLayer"]
 
         for face in bm.faces:
             if face[retopoViewGroupLayer] == group_id:
@@ -284,9 +279,8 @@ class RETOPOVIEW_OT_overlay(Operator):
         coords = np.empty((len(mesh.vertices), 3), 'f')
         mesh.vertices.foreach_get("co", np.reshape(coords, len(mesh.vertices) * 3))
 
-        # offset wireframe verts to have slightly different depth - works well only for close view range
         for c_idx, coord in enumerate(coords):
-            coords[c_idx] = coord + mesh.vertices[c_idx].normal*0.0035
+            coords[c_idx] = coord + mesh.vertices[c_idx].normal * 0.0035
 
         wireframe_colors = np.empty((len(mesh.vertices), 4), 'f')
         for v_idx, _ in enumerate(mesh.vertices):
@@ -315,7 +309,7 @@ class RETOPOVIEW_OT_overlay(Operator):
 
             smallest_dimension = self.get_smallest_vector_dimension(obj.dimensions)
             pole_coords.append(vert.co + vert.normal * smallest_dimension * 0.5 * obj.rv_poles_size)
-            pole_indices.append([pole_idx, pole_idx+1])
+            pole_indices.append([pole_idx, pole_idx + 1])
 
             pole_idx += 2
 
@@ -343,7 +337,7 @@ class RETOPOVIEW_OT_overlay(Operator):
         edge_indices = []
         vert_idx_cache = set()
 
-        retopoViewGroupLayer = mesh.polygon_layers_int.get("RetopoViewGroupLayer")
+        retopoViewGroupLayer = mesh.face_maps.get("RetopoViewGroupLayer")
 
         idx = 0
         for _, triangle in enumerate(mesh.loop_triangles):
@@ -369,10 +363,9 @@ class RETOPOVIEW_OT_overlay(Operator):
                 verts.append(mesh.vertices[triangle.vertices[i]].co)
                 colors.append(group_color)
 
-            triangle_indices.append([idx, idx+1, idx+2])
+            triangle_indices.append([idx, idx + 1, idx + 2])
             idx = idx + 3
 
-        shader = gpu.types.GPUShader(vertex_shader, fragment_shader)
         batch = batch_for_shader(
             shader, 'TRIS',
             {"position": verts, "color": colors},
@@ -386,44 +379,43 @@ class RETOPOVIEW_OT_overlay(Operator):
             pole_batch = self.prep_pole_batch(shader, mesh, obj)
 
         if obj.rv_backface_culling:
-            bgl.glEnable(bgl.GL_CULL_FACE)
+            gpu.state.cull_face_set('BACK')
 
-        bgl.glEnable(bgl.GL_DEPTH_TEST)
-        bgl.glEnable(bgl.GL_BLEND)
+        gpu.state.depth_test_set('LESS_EQUAL')
+        gpu.state.blend_set('ALPHA')
 
         for area in bpy.context.screen.areas:
             if area.type == 'VIEW_3D':
                 for space in area.spaces:
-                    if space.type == 'VIEW_3D':
-                        if space.shading.type == 'WIREFRAME':
-                            bgl.glDepthFunc(bgl.GL_ALWAYS)
+                    if space.type == 'VIEW_3D' and space.shading.type == 'WIREFRAME':
+                        gpu.state.depth_func_set('ALWAYS')
 
         if obj.show_in_front:
-            bgl.glDepthFunc(bgl.GL_ALWAYS)
-            bgl.glEnable(bgl.GL_CULL_FACE)
+            gpu.state.depth_func_set('ALWAYS')
+            gpu.state.cull_face_set('BACK')
 
         shader.bind()
-        shader.uniform_float("viewProjectionMatrix", bpy.context.region_data.perspective_matrix)
+        shader.uniform_float("viewProjectionMatrix", context.region_data.perspective_matrix)
         shader.uniform_float("worldMatrix", obj.matrix_world)
         shader.uniform_float("alpha", obj.rv_groups_alpha)
         batch.draw(shader)
 
-        bgl.glDepthFunc(bgl.GL_LEQUAL)
+        gpu.state.depth_func_set('LEQUAL')
         shader.uniform_float("alpha", 1)
 
         if obj.rv_show_wire:
             wireframe_batch.draw(shader)
 
         if obj.rv_show_poles:
-            bgl.glLineWidth(2)
+            gpu.state.line_width_set(2)
             pole_batch.draw(shader)
 
-        bgl.glLineWidth(1)
-        bgl.glDisable(bgl.GL_DEPTH_TEST)
-        bgl.glDisable(bgl.GL_BLEND)
+        gpu.state.line_width_set(1)
+        gpu.state.depth_test_set('NONE')
+        gpu.state.blend_set('NONE')
 
         if obj.rv_backface_culling:
-            bgl.glDisable(bgl.GL_CULL_FACE)
+            gpu.state.cull_face_set('NONE')
 
     def modal(self, context, event):
         context.area.tag_redraw()

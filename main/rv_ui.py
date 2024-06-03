@@ -34,7 +34,7 @@ class RETOPOVIEW_MT_rv_pie_menu(Menu):
 
 
 class RETOPOVIEW_UL_group_list(UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         layout.prop(item, "color", text="", emboss=True, icon='COLOR')
         layout.prop(item, "name", text="", emboss=False)
 
