@@ -20,12 +20,10 @@ def set_up_marker_data_layer(self, context):
 
     mesh = obj.data
 
-    retopoViewGroupLayer = mesh.face_maps.get("RetopoViewGroupLayer")
-    if retopoViewGroupLayer is None:
-        retopoViewGroupLayer = mesh.face_maps.new(name='RetopoViewGroupLayer')
+    if 'RetopoViewGroupLayer' not in mesh.attributes:
+        mesh.attributes.new(name='RetopoViewGroupLayer', type='INT', domain='FACE')
 
     bpy.ops.object.mode_set(mode=object_mode)
-
 
 class RETOPOVIEW_OT_add_group(Operator):
     bl_idname = "retopoview.add_group"
@@ -83,7 +81,7 @@ class RETOPOVIEW_OT_handle_face_selection(Operator):
 
         mesh = obj.data
         bm = bmesh.from_edit_mesh(mesh)
-        retopoViewGroupLayer = bm.faces.layers.face_map["RetopoViewGroupLayer"]
+        retopoViewGroupLayer = bm.faces.layers.int["RetopoViewGroupLayer"]
 
         for face in bm.faces:
             if face[retopoViewGroupLayer] == group_id:
@@ -108,7 +106,7 @@ class RETOPOVIEW_OT_find_parent_group(Operator):
 
         mesh = obj.data
         bm = bmesh.from_edit_mesh(mesh)
-        retopoViewGroupLayer = bm.faces.layers.face_map["RetopoViewGroupLayer"]
+        retopoViewGroupLayer = bm.faces.layers.int["RetopoViewGroupLayer"]
 
         for face in bm.faces:
             if face.select and face[retopoViewGroupLayer] != 0:
