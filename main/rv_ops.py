@@ -17,11 +17,9 @@ class RETOPOVIEW_OT_overlay(Operator):
 
     def get_smallest_vector_dimension(self, vector):
         smallest_dimension = vector[0]
-
         for dimension in vector:
             if dimension < smallest_dimension:
                 smallest_dimension = dimension
-
         return smallest_dimension
 
     def prep_wireframe_batch(self, shader, mesh, obj, vert_idx_cache, edge_indices):
@@ -43,12 +41,23 @@ class RETOPOVIEW_OT_overlay(Operator):
         else:
             bm = bmesh.new()
             bm.from_mesh(obj.data)
+            bm.normal_update()
 
         bm.verts.ensure_lookup_table()
         bm.edges.ensure_lookup_table()
         bm.faces.ensure_lookup_table()
 
-        pole_verts = [vert for vert in bm.verts if len(vert.link_edges) > 4]
+        retopoViewGroupLayer = bm.faces.layers.int.get("RetopoViewGroupLayer")
+
+        pole_verts = []
+        for vert in bm.verts:
+            linked_edges = [edge for edge in vert.link_edges if any(face[retopoViewGroupLayer] == obj.rv_groups[obj.rv_index].group_id for face in edge.link_faces)]
+            num_link_edges = len(linked_edges)
+            if num_link_edges >= 2:
+                pole_verts.append(vert)
+        if not pole_verts:
+            return None
+
         pole_coords = []
         pole_indices = []
 
