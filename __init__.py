@@ -26,12 +26,15 @@ bl_info = {
     "category": "Object"
 }
 
-from .main.rv_ui import *
-from .main.rv_ops import *
-
+import bpy
 from bpy.types import PropertyGroup
 from bpy.props import IntProperty, BoolProperty, StringProperty, CollectionProperty, FloatVectorProperty, FloatProperty
-import bpy
+
+# Import modules
+from .main.rv_ui import register as ui_register, unregister as ui_unregister
+from .main.rv_ops import *
+from .main.rv_group_navigation import *
+
 
 class RETOPOVIEW_group(PropertyGroup):
     def ensure_unique_name(self, context):
@@ -65,25 +68,20 @@ class RETOPOVIEW_group(PropertyGroup):
 
     name_update: StringProperty(default='Group', update=update_name)
 
-
-classes = (
-    RETOPOVIEW_OT_overlay,
-    RETOPOVIEW_PT_rv_tool_menu,
-    RETOPOVIEW_OT_toggle_mode,
-    RETOPOVIEW_group,
-    RETOPOVIEW_UL_group_list,
-    RETOPOVIEW_OT_add_group,
-    RETOPOVIEW_OT_remove_group,
-    RETOPOVIEW_OT_move_group,
-    RETOPOVIEW_OT_change_selection_group_id,
-    RETOPOVIEW_OT_handle_face_selection,
-    RETOPOVIEW_OT_find_parent_group,
-)
-
-addon_keymaps = []
-
-
 def register():
+    bpy.utils.register_class(RETOPOVIEW_group)
+
+    classes = (
+        RETOPOVIEW_OT_overlay,
+        RETOPOVIEW_OT_add_group,
+        RETOPOVIEW_OT_handle_face_selection,
+        RETOPOVIEW_OT_find_parent_group,
+        RETOPOVIEW_OT_move_group,
+        RETOPOVIEW_OT_change_selection_group_id,
+        RETOPOVIEW_OT_toggle_mode,
+        RETOPOVIEW_OT_remove_group,
+    )
+
     for c in classes:
         bpy.utils.register_class(c)
 
@@ -103,13 +101,14 @@ def register():
 
     bpy.types.Object.rv_poles_color = FloatVectorProperty(name="Poles Color", subtype='COLOR', default=[1.0, 1.0, 1.0], min=0.0, max=1.0)
 
+    ui_register()  # Register UI components
+
     wm = bpy.context.window_manager
     km = wm.keyconfigs.addon.keymaps.new(name='3D View', space_type='VIEW_3D')
     kmi = km.keymap_items.new('wm.call_menu_pie', 'F', 'PRESS', ctrl=False, shift=True, alt=False)
     kmi.properties.name = "RETOPOVIEW_MT_rv_pie_menu"
 
     addon_keymaps.append((km, kmi))
-
 
 def unregister():
     for km, kmi in addon_keymaps:
@@ -128,9 +127,22 @@ def unregister():
     del bpy.types.Object.rv_backface_culling
     del bpy.types.Object.rv_enabled
 
+    classes = (
+        RETOPOVIEW_OT_overlay,
+        RETOPOVIEW_OT_add_group,
+        RETOPOVIEW_OT_handle_face_selection,
+        RETOPOVIEW_OT_find_parent_group,
+        RETOPOVIEW_OT_move_group,
+        RETOPOVIEW_OT_change_selection_group_id,
+        RETOPOVIEW_OT_toggle_mode,
+        RETOPOVIEW_OT_remove_group,
+    )
+
     for c in classes:
         bpy.utils.unregister_class(c)
 
+    bpy.utils.unregister_class(RETOPOVIEW_group)
+    ui_unregister()  # Unregister UI components
 
 if __name__ == "__main__":
     register()
