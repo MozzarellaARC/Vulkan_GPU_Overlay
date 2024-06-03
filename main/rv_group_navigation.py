@@ -234,3 +234,13 @@ class RETOPOVIEW_OT_remove_group(Operator):
 
     def invoke(self, context, event):
         return context.window_manager.invoke_confirm(self, event) if len(context.object.rv_groups) != 0 else {'FINISHED'}
+
+classes = (
+    RETOPOVIEW_OT_add_group, 
+    RETOPOVIEW_OT_handle_face_selection,
+    RETOPOVIEW_OT_find_parent_group,
+    RETOPOVIEW_OT_move_group,
+    RETOPOVIEW_OT_change_selection_group_id,
+    RETOPOVIEW_OT_remove_group,
+    RETOPOVIEW_OT_toggle_mode
+)

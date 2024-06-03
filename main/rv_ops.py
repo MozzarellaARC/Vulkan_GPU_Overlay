@@ -197,3 +197,7 @@ class RETOPOVIEW_OT_overlay(Operator):
 
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
+
+classes = (
+    RETOPOVIEW_OT_overlay
+)

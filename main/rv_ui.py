@@ -114,3 +114,8 @@ def register():
 def unregister():
     bpy.utils.unregister_class(RETOPOVIEW_UL_group_list)
     bpy.utils.unregister_class(RETOPOVIEW_PT_rv_tool_menu)
+
+classes = (
+    RETOPOVIEW_UL_group_list,
+    RETOPOVIEW_PT_rv_tool_menu
+)
