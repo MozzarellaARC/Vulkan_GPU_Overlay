@@ -14,10 +14,16 @@ import bpy
 from bpy.types import PropertyGroup
 from bpy.props import IntProperty, BoolProperty, StringProperty, CollectionProperty, FloatVectorProperty, FloatProperty
 
-# Import modules
-from .main.rv_ui import register as ui_register, unregister as ui_unregister
-from .main.rv_ops import *
-from .main.rv_group_navigation import *
+from .main.rv_ops import RenderVertex
+from .main.rv_shaders import vertex_shader_source, fragment_shader_source
+from .main.rv_ui import RenderUI
+
+__all__ = [
+    "RenderVertex",
+    "vertex_shader_source",
+    "fragment_shader_source",
+    "RenderUI"
+]
 
 class RETOPOVIEW_group(PropertyGroup):
     def ensure_unique_name(self, context):
