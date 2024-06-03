@@ -2,7 +2,7 @@ bl_info = {
     "name": "RetopoView",
     "author": "Loki Bear",
     "description": "Adds colourful overlays for meshes. Useful for marking topology flow when doing retopo/studying topology.",
-    "blender": (2, 91, 0),
+    "blender": (4, 10, 0),
     "version": (0, 0, 1),
     'location': 'Properties > Data > Topology Groups',
     "warning": "",
