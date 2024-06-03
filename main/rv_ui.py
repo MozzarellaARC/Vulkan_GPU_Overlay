@@ -1,38 +1,6 @@
 import bpy
 from bpy.types import UIList, Panel, Menu
 
-
-class RETOPOVIEW_MT_rv_pie_menu(Menu):
-    bl_label = "RetopoView"
-    bl_idname = "RETOPOVIEW_MT_rv_pie_menu"
-
-    def draw(self, context):
-        pie = self.layout.menu_pie()
-
-        if context.object.type != 'MESH':
-            box = pie.box()
-            box.label(text='No valid object')
-            return
-
-        if not context.mode == 'EDIT_MESH':
-            if len(context.object.rv_groups) <= 0:
-                pie.operator("retopoview.add_group", text='Add New Group')
-            else:
-                pie.operator("retopoview.toggle_mode", text='Toggle Overlay')
-            return
-
-        if not context.object.rv_enabled:
-            pie.operator("retopoview.toggle_mode", text='Toggle Overlay')
-        else:
-            pie.operator("retopoview.change_selection_group_id", text='Remove').remove = True
-            pie.operator("retopoview.handle_face_selection", text='Deselect').deselect = True
-            pie.operator("retopoview.add_group", text='Add New Group')
-            pie.operator("retopoview.find_parent_group", text='Find Parent Group')
-            pie.operator("retopoview.change_selection_group_id", text='Assign').remove = False
-            pie.operator("retopoview.handle_face_selection", text='Select').deselect = False
-            pie.operator("retopoview.toggle_mode", text='Toggle Mode')
-
-
 class RETOPOVIEW_UL_group_list(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         layout.prop(item, "color", text="", emboss=True, icon='COLOR')

@@ -55,9 +55,15 @@ class RETOPOVIEW_group(PropertyGroup):
         except ValueError:
             self.name = self.name + "_1"
 
-    name: StringProperty(default='Group', update=ensure_unique_name)
+    name: StringProperty(default='Group')
     color: FloatVectorProperty(name="Group Color", subtype='COLOR', default=[1.0, 1.0, 1.0], min=0.0, max=1.0)
     group_id: IntProperty(default=1)
+
+    # Workaround to handle unique name enforcement
+    def update_name(self, context):
+        self.ensure_unique_name(context)
+
+    name_update: StringProperty(default='Group', update=update_name)
 
 
 classes = (
@@ -72,7 +78,6 @@ classes = (
     RETOPOVIEW_OT_change_selection_group_id,
     RETOPOVIEW_OT_handle_face_selection,
     RETOPOVIEW_OT_find_parent_group,
-    RETOPOVIEW_MT_rv_pie_menu
 )
 
 addon_keymaps = []

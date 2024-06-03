@@ -6,7 +6,7 @@ vertex_shader = '''
     in vec3 position;
     in vec4 color;
     out vec4 fragColor;
-   
+
     void main()
     {
         fragColor = vec4(color.r, color.g, color.b, color.a * alpha);
@@ -16,10 +16,11 @@ vertex_shader = '''
 
 fragment_shader = '''
     in vec4 fragColor;
-    
+    out vec4 outColor;
+
     void main()
     {
         if (fragColor.a == 0) discard;
-        gl_FragColor = fragColor;
+        outColor = fragColor;
     }
 '''

@@ -25,6 +25,7 @@ def set_up_marker_data_layer(self, context):
 
     bpy.ops.object.mode_set(mode=object_mode)
 
+
 class RETOPOVIEW_OT_add_group(Operator):
     bl_idname = "retopoview.add_group"
     bl_label = "Add New Group"
@@ -177,7 +178,7 @@ class RETOPOVIEW_OT_change_selection_group_id(Operator):
 
         mesh = obj.data
         bm = bmesh.from_edit_mesh(mesh)
-        retopoViewGroupLayer = bm.faces.layers.face_map["RetopoViewGroupLayer"]
+        retopoViewGroupLayer = bm.faces.layers.int["RetopoViewGroupLayer"]
 
         if obj.rv_use_x_mirror:
             current_selection = set()
@@ -236,7 +237,7 @@ class RETOPOVIEW_OT_remove_group(Operator):
 
         mesh = obj.data
         bm = bmesh.from_edit_mesh(mesh)
-        retopoViewGroupLayer = bm.faces.layers.face_map["RetopoViewGroupLayer"]
+        retopoViewGroupLayer = bm.faces.layers.int["RetopoViewGroupLayer"]
 
         for face in bm.faces:
             if face[retopoViewGroupLayer] == group_id:
@@ -335,7 +336,7 @@ class RETOPOVIEW_OT_overlay(Operator):
         edge_indices = []
         vert_idx_cache = set()
 
-        retopoViewGroupLayer = mesh.face_maps.get("RetopoViewGroupLayer")
+        retopoViewGroupLayer = mesh.attributes["RetopoViewGroupLayer"]
 
         idx = 0
         for _, triangle in enumerate(mesh.loop_triangles):
