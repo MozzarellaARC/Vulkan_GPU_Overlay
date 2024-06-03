@@ -9,8 +9,8 @@ from bpy.types import Operator
 from mathutils import Color
 from gpu_extras.batch import batch_for_shader
 
+# Import shaders from rv_shaders.py
 from .rv_shaders import vertex_shader, fragment_shader
-
 
 def set_up_marker_data_layer(self, context):
     obj = context.object
@@ -24,7 +24,6 @@ def set_up_marker_data_layer(self, context):
         mesh.attributes.new(name='RetopoViewGroupLayer', type='INT', domain='FACE')
 
     bpy.ops.object.mode_set(mode=object_mode)
-
 
 class RETOPOVIEW_OT_add_group(Operator):
     bl_idname = "retopoview.add_group"
@@ -92,7 +91,6 @@ class RETOPOVIEW_OT_handle_face_selection(Operator):
         mesh.update()
 
         return {'FINISHED'}
-
 
 class RETOPOVIEW_OT_find_parent_group(Operator):
     bl_idname = "retopoview.find_parent_group"
@@ -378,7 +376,7 @@ class RETOPOVIEW_OT_overlay(Operator):
             pole_batch = self.prep_pole_batch(shader, mesh, obj)
 
         if obj.rv_backface_culling:
-            gpu.state.cull_face_set('BACK')
+            gpu.state.face_culling_set('BACK')
 
         gpu.state.depth_test_set('LESS_EQUAL')
         gpu.state.blend_set('ALPHA')
@@ -387,11 +385,11 @@ class RETOPOVIEW_OT_overlay(Operator):
             if area.type == 'VIEW_3D':
                 for space in area.spaces:
                     if space.type == 'VIEW_3D' and space.shading.type == 'WIREFRAME':
-                        gpu.state.depth_func_set('ALWAYS')
+                        gpu.state.depth_test_set('ALWAYS')
 
         if obj.show_in_front:
-            gpu.state.depth_func_set('ALWAYS')
-            gpu.state.cull_face_set('BACK')
+            gpu.state.depth_test_set('ALWAYS')
+            gpu.state.face_culling_set('BACK')
 
         shader.bind()
         shader.uniform_float("viewProjectionMatrix", context.region_data.perspective_matrix)
@@ -399,7 +397,7 @@ class RETOPOVIEW_OT_overlay(Operator):
         shader.uniform_float("alpha", obj.rv_groups_alpha)
         batch.draw(shader)
 
-        gpu.state.depth_func_set('LEQUAL')
+        gpu.state.depth_test_set('LEQUAL')
         shader.uniform_float("alpha", 1)
 
         if obj.rv_show_wire:
@@ -410,11 +408,11 @@ class RETOPOVIEW_OT_overlay(Operator):
             pole_batch.draw(shader)
 
         gpu.state.line_width_set(1)
-        gpu.state.depth_test_set('NONE')
-        gpu.state.blend_set('NONE')
+        gpu.state.depth_test_set(None)
+        gpu.state.blend_set(None)
 
         if obj.rv_backface_culling:
-            gpu.state.cull_face_set('NONE')
+            gpu.state.face_culling_set(None)
 
     def modal(self, context, event):
         context.area.tag_redraw()
