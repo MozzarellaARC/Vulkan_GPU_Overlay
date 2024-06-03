@@ -1,19 +1,3 @@
-# RetopoView
-# Copyright (C) 2021  Loki Bear
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 bl_info = {
     "name": "RetopoView",
     "author": "Loki Bear",
@@ -34,7 +18,6 @@ from bpy.props import IntProperty, BoolProperty, StringProperty, CollectionPrope
 from .main.rv_ui import register as ui_register, unregister as ui_unregister
 from .main.rv_ops import *
 from .main.rv_group_navigation import *
-
 
 class RETOPOVIEW_group(PropertyGroup):
     def ensure_unique_name(self, context):
@@ -83,6 +66,8 @@ def register():
     )
 
     for c in classes:
+        if hasattr(bpy.types, c.bl_idname):
+            bpy.utils.unregister_class(c)
         bpy.utils.register_class(c)
 
     bpy.types.Object.rv_enabled = BoolProperty()
@@ -103,18 +88,7 @@ def register():
 
     ui_register()  # Register UI components
 
-    wm = bpy.context.window_manager
-    km = wm.keyconfigs.addon.keymaps.new(name='3D View', space_type='VIEW_3D')
-    kmi = km.keymap_items.new('wm.call_menu_pie', 'F', 'PRESS', ctrl=False, shift=True, alt=False)
-    kmi.properties.name = "RETOPOVIEW_MT_rv_pie_menu"
-
-    addon_keymaps.append((km, kmi))
-
 def unregister():
-    for km, kmi in addon_keymaps:
-        km.keymap_items.remove(kmi)
-    addon_keymaps.clear()
-
     del bpy.types.Object.rv_poles_color
     del bpy.types.Object.rv_poles_size
     del bpy.types.Object.rv_groups_alpha
@@ -139,7 +113,8 @@ def unregister():
     )
 
     for c in classes:
-        bpy.utils.unregister_class(c)
+        if hasattr(bpy.types, c.bl_idname):
+            bpy.utils.unregister_class(c)
 
     bpy.utils.unregister_class(RETOPOVIEW_group)
     ui_unregister()  # Unregister UI components
