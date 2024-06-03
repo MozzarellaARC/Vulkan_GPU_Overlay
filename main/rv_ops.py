@@ -397,7 +397,7 @@ class RETOPOVIEW_OT_overlay(Operator):
         shader.uniform_float("alpha", obj.rv_groups_alpha)
         batch.draw(shader)
 
-        gpu.state.depth_test_set('LEQUAL')
+        gpu.state.depth_test_set('LESS_EQUAL')
         shader.uniform_float("alpha", 1)
 
         if obj.rv_show_wire:
@@ -408,8 +408,8 @@ class RETOPOVIEW_OT_overlay(Operator):
             pole_batch.draw(shader)
 
         gpu.state.line_width_set(1)
-        gpu.state.depth_test_set(None)
-        gpu.state.blend_set(None)
+        gpu.state.depth_test_set('NONE')
+        gpu.state.blend_set('NONE')
 
         if obj.rv_backface_culling:
             gpu.state.face_culling_set(None)
