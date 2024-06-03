@@ -5,3 +5,7 @@ There are things that is changed in this fork to make the code simpler and can b
 2. removed pie-menu functionality
 3. hot loops optimizatin for performance stability
 4. lesser computational iteration for performance stability
+
+Add-on Location :
+
+![Screenshot_7](https://github.com/MozzarellaARC/Vulkan_GPU_Overlay/assets/62471068/3f2b066e-2fc8-4a72-92ba-cbc325a8cc6e)
