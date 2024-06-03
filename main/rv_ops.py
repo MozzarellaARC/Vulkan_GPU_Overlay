@@ -3,11 +3,8 @@ import bmesh
 import numpy as np
 import gpu
 from bpy.props import StringProperty, FloatVectorProperty, BoolProperty, EnumProperty, CollectionProperty, IntProperty
-from bpy.types import Operator, Panel, PropertyGroup
-from mathutils import Color
+from bpy.types import Operator, PropertyGroup
 from gpu_extras.batch import batch_for_shader
-
-# Import shaders from rv_shaders.py
 from .rv_shaders import vertex_shader, fragment_shader
 
 class RETOPOVIEW_OT_overlay(Operator):
@@ -16,22 +13,18 @@ class RETOPOVIEW_OT_overlay(Operator):
     bl_description = "Draw RetopoView face overlay"
 
     def get_smallest_vector_dimension(self, vector):
-        smallest_dimension = vector[0]
-        for dimension in vector:
-            if dimension < smallest_dimension:
-                smallest_dimension = dimension
-        return smallest_dimension
+        return min(vector)
 
     def prep_wireframe_batch(self, shader, mesh, obj, vert_idx_cache, edge_indices):
-        coords = np.empty((len(mesh.vertices), 3), 'f')
+        coords = np.empty((len(mesh.vertices), 3), dtype=np.float32)
         mesh.vertices.foreach_get("co", np.reshape(coords, len(mesh.vertices) * 3))
 
-        for c_idx, coord in enumerate(coords):
-            coords[c_idx] = coord + mesh.vertices[c_idx].normal * 0.0035
+        # Using numpy operations for better performance
+        coords += np.array([v.normal * 0.0035 for v in mesh.vertices])
 
-        wireframe_colors = np.empty((len(mesh.vertices), 4), 'f')
-        for v_idx, _ in enumerate(mesh.vertices):
-            wireframe_colors[v_idx] = (0, 0, 0, obj.rv_groups_alpha) if v_idx in vert_idx_cache else (0, 0, 0, 0)
+        wireframe_colors = np.zeros((len(mesh.vertices), 4), dtype=np.float32)
+        for v_idx in vert_idx_cache:
+            wireframe_colors[v_idx] = (0, 0, 0, obj.rv_groups_alpha)
 
         return batch_for_shader(shader, 'LINES', {"position": coords, "color": wireframe_colors}, indices=edge_indices)
 
@@ -49,36 +42,31 @@ class RETOPOVIEW_OT_overlay(Operator):
 
         retopoViewGroupLayer = bm.faces.layers.int.get("RetopoViewGroupLayer")
 
-        pole_verts = []
-        for vert in bm.verts:
-            linked_edges = [edge for edge in vert.link_edges if any(face[retopoViewGroupLayer] == obj.rv_groups[obj.rv_index].group_id for face in edge.link_faces)]
-            num_link_edges = len(linked_edges)
-            if num_link_edges >= 2:
-                pole_verts.append(vert)
+        pole_verts = [
+            vert for vert in bm.verts
+            if sum(1 for edge in vert.link_edges if any(face[retopoViewGroupLayer] == obj.rv_groups[obj.rv_index].group_id for face in edge.link_faces)) >= 2
+        ]
+
         if not pole_verts:
             return None
 
         pole_coords = []
         pole_indices = []
+        smallest_dimension = self.get_smallest_vector_dimension(obj.dimensions)
+        pole_size = smallest_dimension * 0.5 * obj.rv_poles_size
 
-        pole_idx = 0
         for vert in pole_verts:
-            pole_coords.append(vert.co)
-
-            smallest_dimension = self.get_smallest_vector_dimension(obj.dimensions)
-            pole_coords.append(vert.co + vert.normal * smallest_dimension * 0.5 * obj.rv_poles_size)
-            pole_indices.append([pole_idx, pole_idx + 1])
-
-            pole_idx += 2
+            pole_coords.extend([vert.co, vert.co + vert.normal * pole_size])
+            pole_indices.append([len(pole_coords) - 2, len(pole_coords) - 1])
 
         pole_color = (obj.rv_poles_color.r, obj.rv_poles_color.g, obj.rv_poles_color.b, 1)
-        pole_colors = [pole_color for _ in pole_coords]
+        pole_colors = [pole_color] * len(pole_coords)
 
         return batch_for_shader(shader, 'LINES', {"position": pole_coords, "color": pole_colors}, indices=pole_indices)
 
     def draw_overlay(self, context, depsgraph, obj):
         try:
-            if not obj or not obj.rv_enabled or len(obj.rv_groups) <= 0:
+            if not obj or not obj.rv_enabled or not obj.rv_groups:
                 return {'FINISHED'}
         except ReferenceError:
             return {'FINISHED'}
@@ -98,37 +86,28 @@ class RETOPOVIEW_OT_overlay(Operator):
         retopoViewGroupLayer = mesh.attributes["RetopoViewGroupLayer"]
 
         idx = 0
-        for _, triangle in enumerate(mesh.loop_triangles):
+        group_dict = {group.group_id: group.color for group in obj.rv_groups}
+
+        for triangle in mesh.loop_triangles:
             if mesh.polygons[triangle.polygon_index].hide and obj.mode == 'EDIT':
                 continue
 
             group_color = (1, 1, 1, 0)
             triangle_parent_poly_group_id = retopoViewGroupLayer.data[triangle.polygon_index].value
 
-            for group in obj.rv_groups:
-                if group.group_id == triangle_parent_poly_group_id:
-                    group_color = (group.color.r, group.color.g, group.color.b, 0.5)
+            if triangle_parent_poly_group_id in group_dict:
+                group_color = (*group_dict[triangle_parent_poly_group_id][:3], 0.5)
+                if obj.rv_show_wire:
+                    parent_poly = mesh.polygons[triangle.polygon_index]
+                    edge_indices.extend(parent_poly.edge_keys)
+                    vert_idx_cache.update(triangle.vertices)
 
-                    if obj.rv_show_wire:
-                        parent_poly = mesh.polygons[triangle.polygon_index]
-                        for edge_key in parent_poly.edge_keys:
-                            edge_indices.append(edge_key)
-
-                        for i in range(3):
-                            vert_idx_cache.add(triangle.vertices[i])
-
-            for i in range(3):
-                verts.append(mesh.vertices[triangle.vertices[i]].co)
-                colors.append(group_color)
-
+            verts.extend([mesh.vertices[v_idx].co for v_idx in triangle.vertices])
+            colors.extend([group_color] * 3)
             triangle_indices.append([idx, idx + 1, idx + 2])
-            idx = idx + 3
+            idx += 3
 
-        batch = batch_for_shader(
-            shader, 'TRIS',
-            {"position": verts, "color": colors},
-            indices=triangle_indices,
-        )
+        batch = batch_for_shader(shader, 'TRIS', {"position": verts, "color": colors}, indices=triangle_indices)
 
         if obj.rv_show_wire:
             wireframe_batch = self.prep_wireframe_batch(shader, mesh, obj, vert_idx_cache, edge_indices)
@@ -199,5 +178,5 @@ class RETOPOVIEW_OT_overlay(Operator):
         return {'RUNNING_MODAL'}
 
 classes = (
-    RETOPOVIEW_OT_overlay
+    RETOPOVIEW_OT_overlay,
 )
